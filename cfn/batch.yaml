@@ -25,14 +25,30 @@ Resources:
             - Name: MATRIX_SIZE
               Value: "4096"
           Image: dotstar/matrixmath:v1
-          JobRoleArn: "arn:aws:iam::428505257828:role/cdd-awsbatch-logenabled"  
+          JobRoleArn: !GetAtt BatchJobRole.Arn
           Memory: 2048
           Vcpus: 2
-
       JobDefinitionName: !Sub "${EnvironmentName}-MatrixMultiplyBenchmark"
       Timeout: 
         AttemptDurationSeconds: 3600
       Type: "container"
+
+  # This role alows ECS to get containers from ECR and write logs to CloudWatch
+  BatchJobRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: "/"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy 
+      RoleName: !Sub "${EnvironmentName}-JobRole"
 
   # Job Queue
   BatchJobQueue:
@@ -54,17 +70,12 @@ Resources:
         AllocationStrategy: "BEST_FIT"
         BidPercentage: 100
         DesiredvCpus: 4
-        # Ec2KeyPair: String
-        # ImageId: String
         InstanceRole: !GetAtt ECSInstanceProfile.Arn
         InstanceTypes: 
           - c5
           - r5
-        # LaunchTemplate: 
-        #   LaunchTemplateSpecification
         MaxvCpus: 32
         MinvCpus: 2
-        # PlacementGroup: String
         SecurityGroupIds: 
           - !Ref BatchSecurityGroup
         SpotIamFleetRole: !GetAtt SpotFleetRole.Arn
