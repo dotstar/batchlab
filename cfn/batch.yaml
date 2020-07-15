@@ -3,12 +3,12 @@ Description: Creates Batch compute environment and queue for Immersion Day
 
 Parameters:
   EnvironmentName:
-    Description: An environment name that is prefixed to resource names
+    Description: Name that is prefixed to resource names
     Type: String
     Default: Batch
   VPCId:
     Description: The VPI-Id where Batch will start instances 
-    Type: AWS::EC2::VPC::Id 
+    Type: AWS::EC2::VPC::Id
   SubnetId:
     Description: The subnet-id for the batch compute instance
     Type: AWS::EC2::Subnet::Id
@@ -61,7 +61,7 @@ Resources:
       Priority: 1
       State: "ENABLED"
 
-  # # Compute environment, related roles and profiles ...
+  # Compute environment, related roles and profiles ...
   BatchComputeEnvironment:                        
     Type: AWS::Batch::ComputeEnvironment
     Properties: 
@@ -89,6 +89,7 @@ Resources:
       State: "ENABLED"
       Type: "MANAGED"
 
+  # AWS Managed Policy - Default policy for the Amazon EC2 Role for Amazon EC2 Container Service.
   ECSInstanceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -105,6 +106,7 @@ Resources:
         - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role 
       RoleName: !Sub "${EnvironmentName}-ECSInstanceRole"
 
+  # Allows EC2 Spot Fleet to request, terminate and tag Spot Instances on your behalf.
   SpotFleetRole:
     Type: AWS::IAM::Role
     Properties:
@@ -130,6 +132,8 @@ Resources:
       Roles: 
         - !Ref ECSInstanceRole
 
+# Policy for AWS Batch service role which allows access to related services 
+# including EC2, Autoscaling, EC2 Container service and Cloudwatch Logs.
   BatchServiceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -153,12 +157,4 @@ Resources:
           VpcId:
               Ref: VPCId 
 
-# Outputs:
-#   RStudio:
-#     Condition: StartEC2
-#     Description: RStudio SSH command
-#     Value: !Sub "ssh -L 8787:localhost:8787 -i ${EEKeyPair}.pem ec2-user@${Instance.PublicDnsName}"
-
-
-    
   
