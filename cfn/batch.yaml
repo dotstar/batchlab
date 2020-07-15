@@ -1,0 +1,153 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates Batch compute environment and queue for Immersion Day
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: Batch
+  VPCId:
+    Description: The VPI-Id where Batch will start instances 
+    Type: AWS::EC2::VPC::Id 
+  SubnetId:
+    Description: The subnet-id for the batch compute instance
+    Type: AWS::EC2::Subnet::Id
+Resources:
+
+  # Job Definition
+  BatchJobDefinition:
+    Type: AWS::Batch::JobDefinition
+    Properties: 
+      ContainerProperties: 
+          Environment: 
+            - Name: LOOPS 
+              Value: "100"
+            - Name: MATRIX_SIZE
+              Value: "4096"
+          Image: dotstar/matrixmath:v1
+          JobRoleArn: "arn:aws:iam::428505257828:role/cdd-awsbatch-logenabled"  
+          Memory: 2048
+          Vcpus: 2
+
+      JobDefinitionName: !Sub "${EnvironmentName}-MatrixMultiplyBenchmark"
+      Timeout: 
+        AttemptDurationSeconds: 3600
+      Type: "container"
+
+  # Job Queue
+  BatchJobQueue:
+    Type: AWS::Batch::JobQueue
+    Properties:
+      ComputeEnvironmentOrder: 
+        - ComputeEnvironment: !Ref BatchComputeEnvironment
+          Order: 1
+      JobQueueName: !Sub "${EnvironmentName}-JobQueue"
+      Priority: 1
+      State: "ENABLED"
+
+  # # Compute environment, related roles and profiles ...
+  BatchComputeEnvironment:                        
+    Type: AWS::Batch::ComputeEnvironment
+    Properties: 
+      ComputeEnvironmentName: !Sub "${EnvironmentName}-ComputeEnvironment"
+      ComputeResources: 
+        AllocationStrategy: "BEST_FIT"
+        BidPercentage: 100
+        DesiredvCpus: 4
+        # Ec2KeyPair: String
+        # ImageId: String
+        InstanceRole: !GetAtt ECSInstanceProfile.Arn
+        InstanceTypes: 
+          - c5
+          - r5
+        # LaunchTemplate: 
+        #   LaunchTemplateSpecification
+        MaxvCpus: 32
+        MinvCpus: 2
+        # PlacementGroup: String
+        SecurityGroupIds: 
+          - !Ref BatchSecurityGroup
+        SpotIamFleetRole: !GetAtt SpotFleetRole.Arn
+        Subnets: 
+          - !Ref SubnetId
+        Tags: 
+          Name: compute-environment
+          Project: Batch
+        Type: "EC2"
+      ServiceRole: !GetAtt BatchServiceRole.Arn
+      State: "ENABLED"
+      Type: "MANAGED"
+
+  ECSInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: "/"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role 
+      RoleName: !Sub "${EnvironmentName}-ECSInstanceRole"
+
+  SpotFleetRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: "/"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2SpotFleetTaggingRole 
+      RoleName: !Sub "${EnvironmentName}-SpotFleetRole"
+
+
+  ECSInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties: 
+      InstanceProfileName: !Sub "${EnvironmentName}-ECSInstanceProfile"
+      Path: /
+      Roles: 
+        - !Ref ECSInstanceRole
+
+  BatchServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - batch.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: "/"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole 
+      RoleName:  !Sub "${EnvironmentName}-BatchServiceRole"
+
+  BatchSecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+          GroupDescription: No Inbound ingress rules
+          VpcId:
+              Ref: VPCId 
+
+# Outputs:
+#   RStudio:
+#     Condition: StartEC2
+#     Description: RStudio SSH command
+#     Value: !Sub "ssh -L 8787:localhost:8787 -i ${EEKeyPair}.pem ec2-user@${Instance.PublicDnsName}"
+
+
+    
+  

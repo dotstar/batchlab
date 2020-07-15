@@ -1,0 +1,5 @@
+[
+  { "ParameterKey": "EnvironmentName", "ParameterValue": "Batch" },
+  { "ParameterKey": "VPCId", "ParameterValue": "vpc-0e77ef725616198b6" },
+  { "ParameterKey": "SubnetId", "ParameterValue": "subnet-012f088c2337443ed" }
+]
