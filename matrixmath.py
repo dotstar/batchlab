@@ -20,5 +20,5 @@ if __name__ == "__main__":
         m3 = m1 * m2
     stoptime = time()
     runtime = stoptime - starttime
-    results = f'calculated {loops} loops of {matrix_size}x{matrix_size} matrix multiplies in {runtime} seconds'
-    print(results)
+    print(f'calculated {loops} loops of {matrix_size}x{matrix_size} multiplies in {runtime} seconds')
+
